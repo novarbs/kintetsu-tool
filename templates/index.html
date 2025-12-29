@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>近鉄特急予約ツール</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; padding-bottom: 50px; font-family: "Meiryo", sans-serif; }
+        .container { max-width: 500px; margin-top: 20px; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .section-title { border-left: 5px solid #0056b3; padding-left: 10px; margin-bottom: 15px; margin-top: 20px; font-weight: bold; color: #333; }
+        .seat-map-container { background-color: #f0f0f0; padding: 15px; border-radius: 8px; text-align: center; position: relative; }
+        
+        .seat-grid { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+        .seat-row { display: flex; gap: 5px; justify-content: center; align-items: center; }
+
+        .seat-btn {
+            width: 45px; height: 40px; border: 1px solid #ccc; background-color: white; border-radius: 4px;
+            font-size: 0.85rem; display: flex; align-items: center; justify-content: center; cursor: pointer;
+            font-weight: bold; color: #333;
+        }
+        .seat-btn-special {
+            width: 45px; height: 40px; border: 2px solid #d9534f; background-color: #fff5f5; border-radius: 4px;
+            font-size: 0.75rem; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer;
+            color: #d9534f; font-weight: bold; line-height: 1;
+        }
+        .seat-space-icon {
+            width: 45px; height: 40px; border: 2px dashed #aaa; background-color: #eee; border-radius: 4px;
+            font-size: 1.2rem; display: flex; align-items: center; justify-content: center; color: #aaa;
+        }
+        .seat-btn-salon {
+            width: 220px; height: 50px; border: 2px solid #0056b3; background-color: white; 
+            border-radius: 8px; font-weight: bold; color: #0056b3; margin-bottom: 8px;
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+        }
+
+        .seat-btn:hover, .seat-btn-special:hover, .seat-btn-salon:hover { background-color: #e2e6ea; }
+        .seat-btn.selected, .seat-btn-special.selected, .seat-btn-salon.selected { background-color: #0056b3; color: white; border-color: #0056b3; }
+        
+        .d-none-custom { display: none !important; }
+        .aisle-spacer { width: 20px; font-size: 0.7rem; color: #aaa; text-align: center; }
+        .spacer-seat { width: 45px; }
+
+        /* 進行方向矢印のデザイン */
+        .direction-arrow { font-weight: bold; font-size: 1.1rem; padding: 5px; border-radius: 4px; display: inline-block; width: 100%; }
+        .dir-up { color: #d9534f; border-bottom: 2px solid #d9534f; margin-bottom: 10px; } /* 下り（画面上が前） */
+        .dir-down { color: #0056b3; border-top: 2px solid #0056b3; margin-top: 10px; }    /* 上り（画面下が前） */
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h3 class="text-center mb-4 text-primary">近鉄特急予約ツール</h3>
+
+    <div class="section-title">① 日時・区間・人数</div>
+    <div class="row g-2 mb-3">
+        <div class="col-6">
+            <label class="form-label">乗車日</label>
+            <select id="date" class="form-select">
+                {% for d in dates %}
+                <option value="{{ d.value }}">{{ d.label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-3">
+            <label class="form-label">時</label>
+            <select id="hour" class="form-select">
+                {% for i in range(24) %}
+                <option value="{{ '%02d' % i }}" {% if i == 10 %}selected{% endif %}>{{ '%02d' % i }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-3">
+            <label class="form-label">分</label>
+            <select id="minute" class="form-select">
+                <option value="00">00</option>
+                <option value="10">10</option>
+                <option value="20">20</option>
+                <option value="30">30</option>
+                <option value="40">40</option>
+                <option value="50">50</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="row g-2 mb-3 align-items-end">
+        <div class="col-5">
+            <label class="form-label">発駅</label>
+            <select id="dep" class="form-select" onchange="updateGuide()">
+                {% for s in stations %}
+                <option value="{{ s }}" {% if s == '大阪難波' %}selected{% endif %}>{{ s }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-2 text-center">
+            <button class="btn btn-outline-secondary btn-sm w-100" onclick="swapStations()" title="発着駅を入れ替え">
+                ⇅
+            </button>
+        </div>
+        <div class="col-5">
+            <label class="form-label">着駅</label>
+            <select id="arr" class="form-select" onchange="updateGuide()">
+                {% for s in stations %}
+                <option value="{{ s }}" {% if s == '賢島' %}selected{% endif %}>{{ s }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <div class="row g-2 mb-3">
+        <div class="col-6">
+            <label class="form-label">大人</label>
+            <select id="adults" class="form-select" onchange="resetSeatSelection()">
+                {% for i in range(9) %}
+                <option value="{{ i }}" {% if i == 1 %}selected{% endif %}>{{ i }}名</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-6">
+            <label class="form-label">小児</label>
+            <select id="children" class="form-select" onchange="resetSeatSelection()">
+                {% for i in range(9) %}
+                <option value="{{ i }}">{{ i }}名</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <div class="section-title">② 列車・グレード</div>
+    <div class="mb-3">
+        <label class="form-label">列車名指定</label>
+        <select id="train" class="form-select mb-2" onchange="updateTrainSettings()">
+            {% for t in train_names %}
+            <option value="{{ t }}">{{ t }}</option>
+            {% endfor %}
+        </select>
+        
+        <label class="form-label">座席グレード</label>
+        <select id="grade" class="form-select" onchange="updateTrainSettings()">
+            </select>
+    </div>
+
+    <div class="section-title">③ 座席指定</div>
+    
+    <div class="form-check form-switch mb-3">
+        <input class="form-check-input" type="checkbox" id="enable_seat_assign" onchange="toggleSeatSelect()">
+        <label class="form-check-label fw-bold text-primary" for="enable_seat_assign">座席・号車を指定する</label>
+    </div>
+
+    <div id="seat_detail_area" style="opacity: 0.5; pointer-events: none;">
+        
+        <div class="row g-2 mb-3 align-items-center" id="car_select_row">
+            <div class="col-auto">
+                <label class="form-label">号車:</label>
+            </div>
+            <div class="col">
+                <select id="car_no" class="form-select form-select-sm" onchange="updateSeatMapStyle()">
+                    </select>
+            </div>
+        </div>
+
+        <div class="seat-map-container" id="map_container">
+            <div id="direction_up" class="direction-arrow dir-up" style="display:none;">
+                ↑ 進行方向 (下り)<br><span style='font-size:0.75rem; font-weight:normal;'>※大きい号車が先頭</span>
+            </div>
+            
+            <div class="mb-2 fw-bold text-primary">
+                選択中: <span id="selected_seat_text">なし</span>
+                <input type="hidden" id="final_seat_no" value="">
+            </div>
+
+            <div class="seat-grid" id="seat_grid">
+                </div>
+
+            <div id="direction_down" class="direction-arrow dir-down" style="display:none;">
+                ↓ 進行方向 (上り)<br><span style='font-size:0.75rem; font-weight:normal;'>※1号車が先頭</span>
+            </div>
+            
+            <div class="mt-2 text-muted" style="font-size: 0.75rem;">
+                <span id="col_hint"></span><br>
+                <span id="wheelchair_hint" style="color:#d9534f; font-weight:bold; display:none;">♿ 赤枠: 車いす対応席/近隣席</span>
+            </div>
+        </div>
+        
+        <div class="alert alert-success mt-2 d-none-custom" id="msg_no_map">
+            このグレードは座席指定不要です。<br>自動的に会計へ進みます。
+        </div>
+    </div>
+
+    <div class="d-grid gap-2 mt-4">
+        <button class="btn btn-primary btn-lg" onclick="runAutomation()">ブラウザを起動して検索</button>
+    </div>
+    
+    <div class="mt-4 text-center">
+        <div id="loading" class="d-none-custom">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">ブラウザを操作中...</p>
+        </div>
+        
+        <div id="result_area" class="d-none-custom">
+            <h5 class="text-success fw-bold">▼ 結果 ▼</h5>
+            <img id="result_img" src="" class="img-fluid border rounded shadow-sm" alt="結果画面">
+        </div>
+    </div>
+</div>
+
+<script id="train-defs-data" type="application/json">
+    {{ train_defs | tojson }}
+</script>
+<script id="no-map-grades-data" type="application/json">
+    {{ no_map_grades | tojson }}
+</script>
+
+<script>
+    const TRAIN_DEFS = JSON.parse(document.getElementById('train-defs-data').textContent);
+    const NO_MAP_GRADES = JSON.parse(document.getElementById('no-map-grades-data').textContent);
+    let isGradeInit = false;
+    let selectedSeats = []; 
+
+    // 発着駅入れ替え
+    function swapStations() {
+        const dep = document.getElementById('dep');
+        const arr = document.getElementById('arr');
+        const temp = dep.value;
+        dep.value = arr.value;
+        arr.value = temp;
+        updateGuide();
+    }
+
+    function resetSeatSelection() {
+        selectedSeats = [];
+        updateSelectedDisplay();
+        document.querySelectorAll('.selected').forEach(el => el.classList.remove('selected'));
+    }
+
+    function updateTrainSettings() {
+        const trainName = document.getElementById('train').value;
+        const def = TRAIN_DEFS[trainName] || TRAIN_DEFS["指定なし"];
+
+        const gradeSelect = document.getElementById('grade');
+        if (!isGradeInit || gradeSelect.getAttribute('data-prev-train') !== trainName) {
+            gradeSelect.innerHTML = "";
+            def.grades.forEach(g => {
+                let op = document.createElement("option");
+                op.value = g;
+                op.text = g;
+                gradeSelect.appendChild(op);
+            });
+            gradeSelect.setAttribute('data-prev-train', trainName);
+            isGradeInit = true;
+        }
+
+        const carSelect = document.getElementById('car_no');
+        const selectedGrade = gradeSelect.value;
+        carSelect.innerHTML = "<option value='指定なし'>指定なし</option>";
+
+        let validCars = [];
+        if (trainName === "しまかぜ") {
+            if (selectedGrade === "プレミアム") validCars = [1, 2, 5, 6];
+            else if (["サロン", "和風個室", "洋風個室"].includes(selectedGrade)) validCars = [4];
+            else validCars = [1, 2, 4, 5, 6];
+        } 
+        else if (trainName === "ひのとり") {
+            if (selectedGrade === "プレミアム") validCars = [1, 6];
+            else validCars = [2, 3, 4, 5];
+        }
+        else {
+            for (let i=1; i<=def.cars; i++) validCars.push(i);
+        }
+
+        validCars.forEach(i => {
+            if (def.skip_cars.includes(i)) return;
+            let op = document.createElement("option");
+            op.value = i;
+            op.text = i + "号車";
+            carSelect.appendChild(op);
+        });
+
+        if (trainName === "しまかぜ" && ["サロン", "和風個室", "洋風個室"].includes(selectedGrade)) {
+            carSelect.value = "4";
+        }
+        if (trainName === "ひのとり" && selectedGrade === "レギュラー") {
+            carSelect.value = "2"; 
+        }
+        if (trainName === "ひのとり" && selectedGrade === "プレミアム") {
+            carSelect.value = "1";
+        }
+
+        updateSeatMapStyle();
+    }
+
+    function updateSeatMapStyle() {
+        resetSeatSelection(); 
+        
+        const trainName = document.getElementById('train').value;
+        const grade = document.getElementById('grade').value;
+        const carSelect = document.getElementById('car_no');
+        const mapContainer = document.getElementById('map_container');
+        const carRow = document.getElementById('car_select_row');
+        const msg = document.getElementById('msg_no_map');
+        
+        const isSalon = (grade === "サロン");
+        const isPrivate = NO_MAP_GRADES.includes(grade);
+
+        if (isPrivate) {
+            mapContainer.classList.add('d-none-custom');
+            carRow.classList.add('d-none-custom');
+            msg.classList.remove('d-none-custom');
+            return; 
+        } else {
+            mapContainer.classList.remove('d-none-custom');
+            carRow.classList.remove('d-none-custom');
+            msg.classList.add('d-none-custom');
+        }
+
+        if (trainName === "しまかぜ" && isSalon) {
+            carSelect.value = "4"; 
+            carSelect.disabled = true;
+        } else {
+            carSelect.disabled = false;
+        }
+
+        const currentCar = carSelect.value; 
+        const def = TRAIN_DEFS[trainName] || TRAIN_DEFS["指定なし"];
+
+        drawSeatMap(def.cols, isSalon, trainName, currentCar);
+    }
+
+    function drawSeatMap(cols, isSalon, trainName, currentCar) {
+        const seatGrid = document.getElementById('seat_grid');
+        seatGrid.innerHTML = ""; 
+        const hint = document.getElementById('col_hint');
+        const wcHint = document.getElementById('wheelchair_hint');
+        wcHint.style.display = "none";
+
+        if (isSalon) {
+            hint.innerText = "区画番号を選択してください";
+            [3, 2, 1].forEach(num => {
+                let btn = document.createElement('div');
+                btn.className = 'seat-btn-salon';
+                btn.innerText = `サロン ${num} (6人用)`;
+                btn.onclick = function() { selectSeat(this, num.toString()); };
+                seatGrid.appendChild(btn);
+            });
+        } else {
+            hint.innerText = (trainName === "ひのとり" && ["1","6"].includes(currentCar)) ? "画面左:C/B席, 画面右:A席 (プレミアム)" : "画面左:C/B席, 画面右:A席";
+
+            if (trainName === "ひのとり") {
+                if (currentCar == "4") {
+                    wcHint.style.display = "block";
+                    let r31 = createRowDiv();
+                    r31.appendChild(createSeatBtn(31, 'D', true));
+                    r31.appendChild(createSpacer());
+                    r31.appendChild(createAisle());
+                    r31.appendChild(createSpacer()); 
+                    r31.appendChild(createSpacer()); 
+                    seatGrid.appendChild(r31);
+
+                    let rMix = createRowDiv();
+                    rMix.appendChild(createSeatBtn(35, 'D', true));
+                    rMix.appendChild(createSeatBtn(35, 'C', true));
+                    rMix.appendChild(createAisle());
+                    rMix.appendChild(createSeatBtn(31, 'B', true));
+                    rMix.appendChild(createSeatBtn(35, 'A', true));
+                    seatGrid.appendChild(rMix);
+
+                    addDivider(seatGrid);
+                    for(let r=9; r>=1; r--) drawRowDCBA(seatGrid, r);
+
+                } else if (["1", "6"].includes(currentCar)) {
+                    let maxRow = 7; 
+                    for (let r = maxRow; r >= 1; r--) {
+                        drawRowCBA(seatGrid, r);
+                    }
+                } else {
+                    for(let r=13; r>=1; r--) drawRowDCBA(seatGrid, r);
+                }
+
+            } else if (trainName === "しまかぜ" && currentCar == "2") {
+                wcHint.style.display = "block";
+                let r33 = createRowDiv();
+                r33.appendChild(createSeatBtn(33, 'C', true));
+                r33.appendChild(createSpaceWithIcon());
+                r33.appendChild(createAisle());
+                r33.appendChild(createSeatBtn(33, 'A', true));
+                seatGrid.appendChild(r33);
+
+                let r32 = createRowDiv();
+                r32.appendChild(createSeatBtn(32, 'C', true));
+                r32.appendChild(createSpaceWithIcon());
+                r32.appendChild(createAisle());
+                r32.appendChild(createSeatBtn(32, 'A', true));
+                seatGrid.appendChild(r32);
+
+                let rMix = createRowDiv();
+                rMix.appendChild(createSeatBtn(31, 'C', true));
+                rMix.appendChild(createSeatBtn(31, 'B', true));
+                rMix.appendChild(createAisle());
+                rMix.appendChild(createSeatBtn(8, 'A')); 
+                seatGrid.appendChild(rMix);
+
+                addDivider(seatGrid);
+                for (let r = 7; r >= 1; r--) drawRowCBA(seatGrid, r);
+
+            } else {
+                let maxRow = 15;
+                if (trainName === "しまかぜ") {
+                    if (currentCar=="1" || currentCar=="6") maxRow = 9;
+                    if (currentCar=="5") maxRow = 10;
+                }
+                if (trainName === "ひのとり" && ["2","3","5"].includes(currentCar)) maxRow = 13;
+
+                for (let r = maxRow; r >= 1; r--) {
+                    if (cols === 3) drawRowCBA(seatGrid, r);
+                    else drawRowDCBA(seatGrid, r);
+                }
+            }
+        }
+    }
+
+    function drawRowDCBA(container, r) {
+        let rowDiv = createRowDiv();
+        rowDiv.appendChild(createSeatBtn(r, 'D'));
+        rowDiv.appendChild(createSeatBtn(r, 'C'));
+        rowDiv.appendChild(createAisle(r));
+        rowDiv.appendChild(createSeatBtn(r, 'B'));
+        rowDiv.appendChild(createSeatBtn(r, 'A'));
+        container.appendChild(rowDiv);
+    }
+
+    function drawRowCBA(container, r) {
+        let rowDiv = createRowDiv();
+        rowDiv.appendChild(createSeatBtn(r, 'C'));
+        rowDiv.appendChild(createSeatBtn(r, 'B'));
+        rowDiv.appendChild(createAisle(r));
+        rowDiv.appendChild(createSeatBtn(r, 'A'));
+        container.appendChild(rowDiv);
+    }
+
+    function createRowDiv() {
+        let d = document.createElement('div');
+        d.className = "seat-row";
+        return d;
+    }
+    
+    function addDivider(container) {
+        let hr = document.createElement('div');
+        hr.style.width = "90%"; hr.style.borderBottom = "2px dashed #bbb"; hr.style.margin = "10px 0";
+        container.appendChild(hr);
+    }
+
+    function createSeatBtn(row, col, isSpecial=false) {
+        let div = document.createElement('div');
+        div.className = isSpecial ? 'seat-btn-special' : 'seat-btn';
+        div.innerHTML = isSpecial ? `<span class="icon-small">♿</span><br>${row}${col}` : `${row}${col}`;
+        div.onclick = function() { selectSeat(this, row + col); };
+        return div;
+    }
+    
+    function createSpaceWithIcon() {
+        let div = document.createElement('div');
+        div.className = "seat-space-icon";
+        div.innerText = "♿";
+        return div;
+    }
+
+    function createAisle(txt="") {
+        let div = document.createElement('div');
+        div.className = 'aisle-spacer';
+        div.innerText = txt;
+        return div;
+    }
+    
+    function createSpacer() {
+        let div = document.createElement('div');
+        div.className = "spacer-seat";
+        return div;
+    }
+
+    function selectSeat(el, val) {
+        const adults = parseInt(document.getElementById('adults').value);
+        const children = parseInt(document.getElementById('children').value);
+        const totalPeople = adults + children;
+
+        if (totalPeople === 0) {
+            alert("人数を選択してください");
+            return;
+        }
+
+        if (selectedSeats.includes(val)) {
+            selectedSeats = selectedSeats.filter(s => s !== val);
+            el.classList.remove('selected');
+        } else {
+            if (selectedSeats.length < totalPeople) {
+                selectedSeats.push(val);
+                el.classList.add('selected');
+            } else {
+                if(totalPeople === 1) {
+                    let oldVal = selectedSeats.shift();
+                    document.querySelectorAll('.selected').forEach(e => e.classList.remove('selected'));
+                    selectedSeats = [val];
+                    el.classList.add('selected');
+                } else {
+                    alert(`人数(${totalPeople}名)分のみ選択可能です。\n選択を解除してから選び直してください。`);
+                    return;
+                }
+            }
+        }
+        updateSelectedDisplay();
+    }
+
+    function updateSelectedDisplay() {
+        const txt = selectedSeats.length > 0 ? selectedSeats.join(', ') : "なし";
+        document.getElementById('selected_seat_text').innerText = txt;
+        document.getElementById('final_seat_no').value = selectedSeats.join(',');
+    }
+
+    function toggleSeatSelect() {
+        const enabled = document.getElementById('enable_seat_assign').checked;
+        const area = document.getElementById('seat_detail_area');
+        area.style.opacity = enabled ? "1" : "0.5";
+        area.style.pointerEvents = enabled ? "auto" : "none";
+    }
+
+    // ★ 進行方向（矢印）更新ロジック
+    function updateGuide() {
+        const dep = document.getElementById('dep').value;
+        const arr = document.getElementById('arr').value;
+        const upArrow = document.getElementById('direction_up'); // 下り(↑)
+        const downArrow = document.getElementById('direction_down'); // 上り(↓)
+        
+        let isEast = false; 
+        if (["大阪難波", "大阪上本町", "鶴橋", "京都", "大阪阿部野橋"].includes(dep)) isEast = true;
+        if (dep.includes("名古屋") || dep.includes("賢島") || dep.includes("伊勢")) isEast = false;
+        
+        if (dep.includes("大阪") && arr.includes("名古屋")) isEast = true;
+        if (dep.includes("名古屋") && arr.includes("大阪")) isEast = false;
+
+        if (isEast) {
+            // 下り (大阪 -> 名古屋/伊勢) : 画面上が先頭
+            upArrow.style.display = "block";
+            downArrow.style.display = "none";
+        } else {
+            // 上り (名古屋/伊勢 -> 大阪) : 画面下が先頭
+            upArrow.style.display = "none";
+            downArrow.style.display = "block";
+        }
+    }
+
+    function runAutomation() {
+        const data = {
+            date: document.getElementById('date').value,
+            hour: document.getElementById('hour').value,
+            minute: document.getElementById('minute').value,
+            dep: document.getElementById('dep').value,
+            arr: document.getElementById('arr').value,
+            adults: document.getElementById('adults').value,
+            children: document.getElementById('children').value,
+            train: document.getElementById('train').value,
+            grade: document.getElementById('grade').value,
+            enable_seat_assign: document.getElementById('enable_seat_assign').checked,
+            car_no: document.getElementById('car_no').value,
+            seat_no: document.getElementById('final_seat_no').value
+        };
+
+        // ローディング表示
+        document.getElementById('loading').classList.remove('d-none-custom');
+        document.getElementById('result_area').classList.add('d-none-custom');
+
+        fetch('/run', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        })
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('loading').classList.add('d-none-custom');
+            if(data.image_url) {
+                document.getElementById('result_img').src = data.image_url;
+                document.getElementById('result_area').classList.remove('d-none-custom');
+            }
+            alert(data.message);
+        })
+        .catch(err => {
+            document.getElementById('loading').classList.add('d-none-custom');
+            alert("エラーが発生しました");
+        });
+    }
+
+    updateTrainSettings();
+    updateGuide();
+    toggleSeatSelect();
+</script>
+
+</body>
+</html>
