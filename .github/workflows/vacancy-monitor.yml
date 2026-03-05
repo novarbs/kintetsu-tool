@@ -1,0 +1,36 @@
+name: 青の交響曲 空席監視
+
+on:
+  schedule:
+    # 5分ごと (UTC 0:00-9:00 = 日本時間 9:00-18:00)
+    # 近鉄の列車は朝〜夕方運行のため、この時間帯のみ監視
+    - cron: '*/5 0-9 * * *'
+  workflow_dispatch:  # 手動実行も可能
+
+env:
+  TZ: Asia/Tokyo
+
+jobs:
+  check-vacancy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Python セットアップ
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: 依存関係インストール
+        run: pip install requests beautifulsoup4
+
+      - name: 空席チェック実行
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          MONITOR_DATE: ${{ vars.MONITOR_DATE }}
+          MONITOR_SCHEDULE: ${{ vars.MONITOR_SCHEDULE }}
+          MONITOR_GRADES: ${{ vars.MONITOR_GRADES }}
+        run: python check_and_notify.py
