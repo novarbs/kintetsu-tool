@@ -30,6 +30,5 @@ jobs:
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           MONITOR_DATE: ${{ vars.MONITOR_DATE }}
-          MONITOR_SCHEDULE: ${{ vars.MONITOR_SCHEDULE }}
           MONITOR_GRADES: ${{ vars.MONITOR_GRADES }}
         run: python check_and_notify.py
