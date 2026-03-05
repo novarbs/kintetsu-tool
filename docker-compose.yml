@@ -1,0 +1,8 @@
+services:
+  kintetsu:
+    build: .
+    ports:
+      - "5001:5000"   # Flask Web UI
+    env_file:
+      - .env
+    restart: unless-stopped

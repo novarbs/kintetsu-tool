@@ -1,0 +1,7 @@
+.git
+.devcontainer
+__pycache__
+*.pyc
+.DS_Store
+.env
+docs

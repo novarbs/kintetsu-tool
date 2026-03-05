@@ -1,11 +1,19 @@
 from flask import Flask, render_template, request, jsonify
+from monitor import monitor as vacancy_monitor
 from datetime import datetime, timedelta
 import threading
 import re
 import time
 import os
 from dotenv import load_dotenv
-from playwright.sync_api import sync_playwright
+
+# Playwright は予約ツール機能で使用 (空席監視には不要)
+try:
+    from playwright.sync_api import sync_playwright
+    HAS_PLAYWRIGHT = True
+except ImportError:
+    HAS_PLAYWRIGHT = False
+    print("[Info] Playwright未インストール: 予約ツール機能は無効です (空席監視は利用可能)")
 
 load_dotenv()
 
@@ -79,6 +87,10 @@ def convert_seat_to_id(seat_str, train_name="", car_no=""):
     """
     座席ID変換ロジック
     """
+    # 青の交響曲: 専用UIから渡される3桁rawIDはそのまま使用
+    if train_name == "青の交響曲" and len(seat_str) == 3 and seat_str.isdigit():
+        return seat_str
+
     # ひのとり4号車の特殊対応
     if train_name == "ひのとり" and str(car_no) == "4":
         if seat_str in HINOTORI_CAR4_MAP:
@@ -97,6 +109,9 @@ def convert_seat_to_id(seat_str, train_name="", car_no=""):
 
 def run_automation(cond):
     print(f"自動化開始: {cond}")
+    if not HAS_PLAYWRIGHT:
+        print("[Error] Playwright未インストールのため予約自動化は利用できません")
+        return
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=False)
@@ -307,12 +322,58 @@ def index():
                            train_names=TRAIN_NAMES,
                            no_map_grades=NO_MAP_GRADES)
 
+BS_STATIONS = [
+    "大阪阿部野橋", "尺土", "高田市", "橿原神宮前", "飛鳥", "壺阪山",
+    "吉野口", "福神", "下市口", "六田", "大和上市", "吉野神宮", "吉野"
+]
+
+@app.route('/blue_symphony')
+def blue_symphony():
+    date_options = []
+    today = datetime.now()
+    for i in range(35):
+        d = today + timedelta(days=i)
+        val = d.strftime("%m%d")
+        label = d.strftime("%m/%d (%a)")
+        date_options.append({"value": val, "label": label})
+    
+    return render_template('blue_symphony.html',
+                           dates=date_options,
+                           bs_stations=BS_STATIONS)
+
 @app.route('/run', methods=['POST'])
 def run():
     data = request.json
     thread = threading.Thread(target=run_automation, args=(data,))
     thread.start()
     return jsonify({"status": "started", "message": "ブラウザを起動しました。自動操作の後、手動で購入確定してください。"})
+
+# --- 空席監視 ---
+@app.route('/monitor')
+def monitor_page():
+    date_options = []
+    today = datetime.now()
+    for i in range(35):
+        d = today + timedelta(days=i)
+        val = d.strftime("%m%d")
+        label = d.strftime("%m/%d (%a)")
+        date_options.append({"value": val, "label": label})
+    return render_template('monitor.html', dates=date_options)
+
+@app.route('/api/monitor/start', methods=['POST'])
+def monitor_start():
+    config = request.json
+    vacancy_monitor.start(config)
+    return jsonify({"status": "started"})
+
+@app.route('/api/monitor/stop', methods=['POST'])
+def monitor_stop():
+    vacancy_monitor.stop()
+    return jsonify({"status": "stopped"})
+
+@app.route('/api/monitor/status')
+def monitor_status():
+    return jsonify(vacancy_monitor.get_status())
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

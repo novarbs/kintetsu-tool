@@ -1,3 +1,6 @@
 flask
-playwright
+beautifulsoup4
 python-dotenv
+apscheduler
+requests
+gunicorn

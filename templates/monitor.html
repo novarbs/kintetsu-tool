@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>空席監視 | 青の交響曲</title>
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔔</text></svg>">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700&family=Inter:wght@400;500;600&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --navy: #1a237e;
+            --navy-light: #283593;
+            --navy-dark: #0d1442;
+            --gold: #d4a574;
+            --gold-light: #e8c9a0;
+            --gold-dark: #b8885a;
+            --surface: rgba(255, 255, 255, 0.06);
+            --surface-hover: rgba(255, 255, 255, 0.1);
+            --border: rgba(212, 165, 116, 0.2);
+            --green: #4caf50;
+            --red: #ef5350;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: linear-gradient(160deg, var(--navy-dark) 0%, var(--navy) 40%, var(--navy-light) 100%);
+            min-height: 100vh;
+            font-family: 'Inter', 'Noto Serif JP', sans-serif;
+            color: #e8e8f0;
+            padding: 20px 16px 60px;
+        }
+
+        .container {
+            max-width: 540px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            padding: 20px 0;
+        }
+
+        .header h1 {
+            font-family: 'Noto Serif JP', serif;
+            font-size: 1.5rem;
+            color: var(--gold);
+            letter-spacing: 0.1em;
+        }
+
+        .header .subtitle {
+            font-size: 0.75rem;
+            color: var(--gold-light);
+            letter-spacing: 0.2em;
+            margin-top: 4px;
+            opacity: 0.7;
+        }
+
+        .card {
+            background: var(--surface);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+
+        .section-label {
+            font-family: 'Noto Serif JP', serif;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--gold);
+            letter-spacing: 0.15em;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-label::before {
+            content: '';
+            display: inline-block;
+            width: 3px;
+            height: 16px;
+            background: var(--gold);
+            border-radius: 2px;
+        }
+
+        /* Form */
+        .form-group {
+            margin-bottom: 14px;
+        }
+
+        .form-label {
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 6px;
+            display: block;
+        }
+
+        .form-select {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid var(--border);
+            color: #e8e8f0;
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: 0.9rem;
+        }
+
+        .form-select:focus {
+            border-color: var(--gold);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(212, 165, 116, 0.15);
+        }
+
+        .form-select option {
+            background: var(--navy);
+            color: #e8e8f0;
+        }
+
+        /* Grade checkboxes */
+        .grade-checks {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .grade-check {
+            flex: 1;
+            min-width: 100px;
+            padding: 10px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .grade-check:hover {
+            background: var(--surface-hover);
+        }
+
+        .grade-check.checked {
+            background: rgba(212, 165, 116, 0.15);
+            border-color: var(--gold);
+            color: var(--gold);
+            font-weight: 600;
+        }
+
+        /* Buttons */
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 12px;
+            font-family: 'Noto Serif JP', serif;
+            font-size: 0.95rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-start {
+            background: linear-gradient(135deg, var(--gold-dark), var(--gold));
+            color: var(--navy-dark);
+            box-shadow: 0 4px 20px rgba(212, 165, 116, 0.25);
+        }
+
+        .btn-start:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 30px rgba(212, 165, 116, 0.35);
+        }
+
+        .btn-stop {
+            background: rgba(239, 83, 80, 0.2);
+            color: var(--red);
+            border: 1px solid rgba(239, 83, 80, 0.4);
+        }
+
+        .btn-stop:hover {
+            background: rgba(239, 83, 80, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* Status */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .status-running {
+            background: rgba(76, 175, 80, 0.15);
+            color: var(--green);
+            border: 1px solid rgba(76, 175, 80, 0.3);
+        }
+
+        .status-stopped {
+            background: rgba(255, 255, 255, 0.06);
+            color: rgba(255, 255, 255, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .pulse {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--green);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.3;
+            }
+        }
+
+        /* History */
+        .history-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            padding: 10px 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            font-size: 0.8rem;
+        }
+
+        .history-item:last-child {
+            border-bottom: none;
+        }
+
+        .history-time {
+            color: rgba(255, 255, 255, 0.35);
+            font-size: 0.7rem;
+            margin-bottom: 2px;
+        }
+
+        .history-result {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .history-result.found {
+            color: var(--gold);
+            font-weight: 600;
+        }
+
+        .history-result.error {
+            color: var(--red);
+        }
+
+        .vacancy-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            margin-left: 4px;
+        }
+
+        .vacancy-tag.available {
+            background: rgba(76, 175, 80, 0.2);
+            color: var(--green);
+        }
+
+        .vacancy-tag.full {
+            background: rgba(255, 255, 255, 0.06);
+            color: rgba(255, 255, 255, 0.3);
+        }
+
+        .empty-msg {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.25);
+            font-size: 0.8rem;
+            padding: 30px 0;
+        }
+
+        /* Back link */
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 0.8rem;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        .back-link:hover {
+            color: var(--gold-light);
+        }
+
+        .config-summary {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            padding: 12px;
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.5);
+            line-height: 1.6;
+        }
+
+        .config-summary strong {
+            color: var(--gold-light);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <a href="/blue_symphony" class="back-link">← 青の交響曲 予約ツール</a>
+
+        <div class="header">
+            <h1>🔔 空席監視</h1>
+            <div class="subtitle">BLUE SYMPHONY VACANCY MONITOR</div>
+        </div>
+
+        <!-- ステータス -->
+        <div class="card" id="status-card">
+            <div class="d-flex"
+                style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <div class="section-label" style="margin-bottom:0;">ステータス</div>
+                <div id="status-badge" class="status-badge status-stopped">
+                    <span>停止中</span>
+                </div>
+            </div>
+            <div id="config-display" class="config-summary" style="display:none;"></div>
+        </div>
+
+        <!-- 監視条件 -->
+        <div class="card" id="config-card">
+            <div class="section-label">監視条件</div>
+
+            <div class="form-group">
+                <label class="form-label">乗車日</label>
+                <select id="date" class="form-select">
+                    {% for d in dates %}
+                    <option value="{{ d.value }}" data-label="{{ d.label }}">{{ d.label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">便</label>
+                <select id="schedule" class="form-select">
+                    <option value="0">第1便 (10:10発 阿部野橋→吉野)</option>
+                    <option value="1">第2便 (12:34発 吉野→阿部野橋)</option>
+                    <option value="2">第3便 (14:10発 阿部野橋→吉野)</option>
+                    <option value="3">第4便 (16:34発 吉野→阿部野橋)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">監視グレード（チェックしたものを監視）</label>
+                <div class="grade-checks">
+                    <div class="grade-check checked" data-grade="デラックス" onclick="toggleGrade(this)">💺 デラックス</div>
+                    <div class="grade-check checked" data-grade="サロン" onclick="toggleGrade(this)">🛋️ サロン</div>
+                    <div class="grade-check checked" data-grade="ツイン" onclick="toggleGrade(this)">👥 ツイン</div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">チェック間隔</label>
+                <select id="interval" class="form-select">
+                    <option value="3">3分</option>
+                    <option value="5" selected>5分</option>
+                    <option value="10">10分</option>
+                    <option value="15">15分</option>
+                </select>
+            </div>
+
+            <button class="btn btn-start" id="btn-start" onclick="startMonitor()">
+                監視を開始する
+            </button>
+            <button class="btn btn-stop" id="btn-stop" onclick="stopMonitor()" style="display:none; margin-top:8px;">
+                監視を停止する
+            </button>
+        </div>
+
+        <!-- 履歴 -->
+        <div class="card">
+            <div class="section-label">チェック履歴</div>
+            <div class="history-list" id="history-list">
+                <div class="empty-msg">まだチェック履歴がありません</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let isRunning = false;
+        let pollTimer = null;
+
+        function toggleGrade(el) {
+            el.classList.toggle('checked');
+        }
+
+        function getSelectedGrades() {
+            return Array.from(document.querySelectorAll('.grade-check.checked'))
+                .map(el => el.dataset.grade);
+        }
+
+        function startMonitor() {
+            const grades = getSelectedGrades();
+            if (grades.length === 0) {
+                alert("少なくとも1つのグレードを選択してください");
+                return;
+            }
+
+            const dateSelect = document.getElementById('date');
+            const dateLabel = dateSelect.options[dateSelect.selectedIndex].dataset.label || dateSelect.value;
+
+            const config = {
+                date: document.getElementById('date').value,
+                date_label: dateLabel,
+                schedule: document.getElementById('schedule').value,
+                grades: grades,
+                interval: document.getElementById('interval').value
+            };
+
+            document.getElementById('btn-start').disabled = true;
+            document.getElementById('btn-start').textContent = '開始中...';
+
+            fetch('/api/monitor/start', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(config)
+            })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'started') {
+                        isRunning = true;
+                        updateUI();
+                        startPolling();
+                    }
+                })
+                .catch(err => {
+                    alert("エラーが発生しました");
+                    document.getElementById('btn-start').disabled = false;
+                    document.getElementById('btn-start').textContent = '監視を開始する';
+                });
+        }
+
+        function stopMonitor() {
+            fetch('/api/monitor/stop', { method: 'POST' })
+                .then(r => r.json())
+                .then(data => {
+                    isRunning = false;
+                    updateUI();
+                    stopPolling();
+                });
+        }
+
+        function updateUI() {
+            const badge = document.getElementById('status-badge');
+            const btnStart = document.getElementById('btn-start');
+            const btnStop = document.getElementById('btn-stop');
+            const configCard = document.getElementById('config-card');
+
+            if (isRunning) {
+                badge.className = 'status-badge status-running';
+                badge.innerHTML = '<div class="pulse"></div> 監視中';
+                btnStart.style.display = 'none';
+                btnStop.style.display = 'block';
+                // フォームを無効化
+                configCard.querySelectorAll('select').forEach(s => s.disabled = true);
+                configCard.querySelectorAll('.grade-check').forEach(g => g.style.pointerEvents = 'none');
+            } else {
+                badge.className = 'status-badge status-stopped';
+                badge.innerHTML = '停止中';
+                btnStart.style.display = 'block';
+                btnStart.disabled = false;
+                btnStart.textContent = '監視を開始する';
+                btnStop.style.display = 'none';
+                configCard.querySelectorAll('select').forEach(s => s.disabled = false);
+                configCard.querySelectorAll('.grade-check').forEach(g => g.style.pointerEvents = 'auto');
+            }
+        }
+
+        function startPolling() {
+            pollStatus();
+            pollTimer = setInterval(pollStatus, 10000); // 10秒ごと
+        }
+
+        function stopPolling() {
+            if (pollTimer) clearInterval(pollTimer);
+        }
+
+        function pollStatus() {
+            fetch('/api/monitor/status')
+                .then(r => r.json())
+                .then(data => {
+                    isRunning = data.is_running;
+                    updateUI();
+                    renderHistory(data.history || []);
+                    renderConfig(data.config);
+                });
+        }
+
+        function renderConfig(config) {
+            const el = document.getElementById('config-display');
+            if (!config) { el.style.display = 'none'; return; }
+
+            const scheduleNames = [
+                '第1便 (10:10発)', '第2便 (12:34発)',
+                '第3便 (14:10発)', '第4便 (16:34発)'
+            ];
+            const grades = (config.grades || []).join('・');
+
+            el.innerHTML = `
+                <strong>📅 ${config.date_label || config.date}</strong> ｜
+                <strong>🚂 ${scheduleNames[config.schedule] || ''}</strong><br>
+                <strong>🎫 ${grades}</strong> ｜
+                <strong>⏱ ${config.interval}分間隔</strong>
+            `;
+            el.style.display = 'block';
+        }
+
+        function renderHistory(history) {
+            const list = document.getElementById('history-list');
+
+            if (history.length === 0) {
+                list.innerHTML = '<div class="empty-msg">まだチェック履歴がありません</div>';
+                return;
+            }
+
+            // 新しい順
+            const reversed = [...history].reverse();
+            list.innerHTML = reversed.map(item => {
+                let resultHtml = '';
+
+                if (item.status === 'error') {
+                    resultHtml = `<span class="history-result error">❌ ${item.error}</span>`;
+                } else if (item.vacancy_found) {
+                    const grades = (item.available_grades || []).map(g =>
+                        `<span class="vacancy-tag available">✅ ${g}</span>`
+                    ).join('');
+                    const notif = item.notification ? ` (${item.notification})` : '';
+                    resultHtml = `<span class="history-result found">🎉 空席あり！${grades}${notif}</span>`;
+                } else {
+                    // グレード別の詳細
+                    const result = item.result || {};
+                    const grades = result.grades || {};
+                    const rawIcons = result.raw_icons || {};
+                    const tags = Object.entries(grades).map(([g, avail]) => {
+                        const icon = rawIcons[g] || '';
+                        const iconLabel = icon.includes('icon-x') ? '×' : icon.includes('icon-o') ? '○' : icon.includes('icon-triangle') ? '△' : icon || '?';
+                        return `<span class="vacancy-tag ${avail ? 'available' : 'full'}">${iconLabel} ${g}</span>`;
+                    }).join('');
+                    const trainInfo = result.train_found ? `(${result.train_info || '検出'})` : '(列車未検出)';
+                    resultHtml = `<span class="history-result">空席なし ${trainInfo} ${tags}</span>`;
+                }
+
+                return `
+                    <div class="history-item">
+                        <div class="history-time">${item.time}</div>
+                        ${resultHtml}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // 初期状態チェック
+        pollStatus();
+    </script>
+</body>
+
+</html>

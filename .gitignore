@@ -1,4 +1,6 @@
 __pycache__/
 .env
 static/
-.DS_Store.env
+.DS_Store
+1.html
+.devcontainer/

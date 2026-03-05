@@ -1,0 +1,1282 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>青の交響曲（シンフォニー）予約</title>
+    <meta name="description" content="近鉄観光特急 青の交響曲（Blue Symphony）の座席予約ツール。大阪阿部野橋〜吉野間。">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700&family=Inter:wght@400;500;600&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bs-navy: #1a237e;
+            --bs-navy-light: #283593;
+            --bs-navy-dark: #0d1442;
+            --bs-gold: #d4a574;
+            --bs-gold-light: #e8c9a0;
+            --bs-gold-dark: #b8885a;
+            --bs-cream: #faf6f0;
+            --bs-surface: rgba(255, 255, 255, 0.06);
+            --bs-surface-hover: rgba(255, 255, 255, 0.1);
+            --bs-border: rgba(212, 165, 116, 0.2);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(160deg, var(--bs-navy-dark) 0%, var(--bs-navy) 40%, var(--bs-navy-light) 100%);
+            min-height: 100vh;
+            font-family: 'Inter', 'Noto Serif JP', sans-serif;
+            color: #e8e8f0;
+            padding-bottom: 60px;
+        }
+
+        /* Header */
+        .hero-header {
+            text-align: center;
+            padding: 30px 20px 20px;
+            position: relative;
+        }
+
+        .hero-header::after {
+            content: '';
+            display: block;
+            width: 80px;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--bs-gold), transparent);
+            margin: 15px auto 0;
+        }
+
+        .hero-title {
+            font-family: 'Noto Serif JP', serif;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--bs-gold);
+            letter-spacing: 0.15em;
+            text-shadow: 0 2px 20px rgba(212, 165, 116, 0.3);
+        }
+
+        .hero-subtitle {
+            font-size: 0.8rem;
+            color: var(--bs-gold-light);
+            letter-spacing: 0.3em;
+            margin-top: 4px;
+            opacity: 0.8;
+        }
+
+        .hero-route {
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.6);
+            margin-top: 8px;
+            letter-spacing: 0.05em;
+        }
+
+        /* Container */
+        .main-container {
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 0 16px;
+        }
+
+        /* Cards */
+        .glass-card {
+            background: var(--bs-surface);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--bs-border);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .glass-card:hover {
+            background: var(--bs-surface-hover);
+        }
+
+        /* Section */
+        .section-label {
+            font-family: 'Noto Serif JP', serif;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--bs-gold);
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-label::before {
+            content: '';
+            display: inline-block;
+            width: 3px;
+            height: 16px;
+            background: var(--bs-gold);
+            border-radius: 2px;
+        }
+
+        /* Train schedule cards */
+        .schedule-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .schedule-card {
+            background: var(--bs-surface);
+            border: 1px solid var(--bs-border);
+            border-radius: 12px;
+            padding: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .schedule-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--bs-gold-dark), var(--bs-gold-light));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .schedule-card:hover {
+            background: var(--bs-surface-hover);
+            border-color: var(--bs-gold-dark);
+            transform: translateY(-2px);
+        }
+
+        .schedule-card.active {
+            background: rgba(212, 165, 116, 0.15);
+            border-color: var(--bs-gold);
+            box-shadow: 0 4px 20px rgba(212, 165, 116, 0.15);
+        }
+
+        .schedule-card.active::before {
+            opacity: 1;
+        }
+
+        .schedule-num {
+            font-size: 0.65rem;
+            color: var(--bs-gold);
+            letter-spacing: 0.1em;
+            margin-bottom: 4px;
+        }
+
+        .schedule-dir {
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.5);
+            margin-bottom: 6px;
+        }
+
+        .schedule-time {
+            font-family: 'Noto Serif JP', serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .schedule-time-small {
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.5);
+            margin-top: 2px;
+        }
+
+        /* Form controls */
+        .form-select-dark,
+        .form-control-dark {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid var(--bs-border);
+            color: #e8e8f0;
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-select-dark:focus,
+        .form-control-dark:focus {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: var(--bs-gold);
+            box-shadow: 0 0 0 3px rgba(212, 165, 116, 0.15);
+            color: #fff;
+        }
+
+        .form-select-dark option {
+            background: var(--bs-navy);
+            color: #e8e8f0;
+        }
+
+        .form-label-sm {
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 6px;
+            letter-spacing: 0.05em;
+        }
+
+        /* Swap button */
+        .swap-btn {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: rgba(212, 165, 116, 0.15);
+            border: 1px solid var(--bs-border);
+            color: var(--bs-gold);
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .swap-btn:hover {
+            background: rgba(212, 165, 116, 0.25);
+            transform: rotate(180deg);
+        }
+
+        /* Passenger counter */
+        .counter-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .counter-label {
+            font-size: 0.85rem;
+            min-width: 36px;
+        }
+
+        /* Grade pills */
+        .grade-pills {
+            display: flex;
+            gap: 8px;
+        }
+
+        .grade-pill {
+            flex: 1;
+            padding: 12px 8px;
+            background: var(--bs-surface);
+            border: 1px solid var(--bs-border);
+            border-radius: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .grade-pill:hover {
+            background: var(--bs-surface-hover);
+            color: #fff;
+        }
+
+        .grade-pill.active {
+            background: rgba(212, 165, 116, 0.15);
+            border-color: var(--bs-gold);
+            color: var(--bs-gold);
+            font-weight: 600;
+        }
+
+        .grade-pill .grade-icon {
+            font-size: 1.3rem;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        /* Seat assign toggle */
+        .seat-toggle-area {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 44px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 24px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .toggle-slider::before {
+            content: '';
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            left: 3px;
+            bottom: 3px;
+            background: #fff;
+            border-radius: 50%;
+            transition: 0.3s;
+        }
+
+        .toggle-switch input:checked+.toggle-slider {
+            background: var(--bs-gold);
+        }
+
+        .toggle-switch input:checked+.toggle-slider::before {
+            transform: translateX(20px);
+        }
+
+        /* Train diagram */
+        .train-diagram {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            margin-bottom: 16px;
+        }
+
+        .train-car {
+            padding: 8px 6px;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 0.65rem;
+            color: rgba(255, 255, 255, 0.6);
+            border: 1px solid var(--bs-border);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            min-width: 80px;
+        }
+
+        .train-car.lounge {
+            background: rgba(212, 165, 116, 0.1);
+            border-style: dashed;
+            cursor: default;
+            opacity: 0.6;
+        }
+
+        .train-car.active-car {
+            border-color: var(--bs-gold);
+            background: rgba(212, 165, 116, 0.15);
+            color: var(--bs-gold);
+        }
+
+        .train-car-num {
+            font-weight: 700;
+            font-size: 0.8rem;
+            color: #fff;
+        }
+
+        .train-car.active-car .train-car-num {
+            color: var(--bs-gold);
+        }
+
+        .train-connector {
+            width: 8px;
+            height: 2px;
+            background: var(--bs-border);
+        }
+
+        /* Seat map */
+        .seat-map-area {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .seat-grid {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .seat-row {
+            display: flex;
+            gap: 5px;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .seat-btn {
+            width: 50px;
+            height: 42px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 6px;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: rgba(255, 255, 255, 0.7);
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .seat-btn:hover {
+            background: rgba(212, 165, 116, 0.15);
+            border-color: var(--bs-gold-dark);
+        }
+
+        .seat-btn.selected {
+            background: var(--bs-gold);
+            color: var(--bs-navy-dark);
+            border-color: var(--bs-gold);
+            font-weight: 700;
+            box-shadow: 0 2px 10px rgba(212, 165, 116, 0.3);
+        }
+
+        .seat-btn-salon {
+            width: 220px;
+            height: 50px;
+            border: 1px solid rgba(212, 165, 116, 0.3);
+            background: rgba(212, 165, 116, 0.08);
+            border-radius: 10px;
+            font-weight: 600;
+            color: var(--bs-gold-light);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.85rem;
+        }
+
+        .seat-btn-salon:hover {
+            background: rgba(212, 165, 116, 0.15);
+        }
+
+        .seat-btn-salon.selected {
+            background: var(--bs-gold);
+            color: var(--bs-navy-dark);
+            border-color: var(--bs-gold);
+            box-shadow: 0 2px 10px rgba(212, 165, 116, 0.3);
+        }
+
+        .seat-btn-special {
+            width: 50px;
+            height: 42px;
+            border: 2px solid #e57373;
+            background: rgba(229, 115, 115, 0.08);
+            border-radius: 6px;
+            font-size: 0.65rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: #ef9a9a;
+            font-weight: 600;
+            line-height: 1.1;
+            transition: all 0.2s ease;
+        }
+
+        .seat-btn-special:hover {
+            background: rgba(229, 115, 115, 0.2);
+        }
+
+        .seat-btn-special.selected {
+            background: var(--bs-gold);
+            color: var(--bs-navy-dark);
+            border-color: var(--bs-gold);
+            font-weight: 700;
+            box-shadow: 0 2px 10px rgba(212, 165, 116, 0.3);
+        }
+
+        .seat-empty {
+            width: 50px;
+            height: 42px;
+        }
+
+        .seat-wc-space {
+            width: 50px;
+            height: 42px;
+            border: 2px dashed rgba(255, 255, 255, 0.15);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            color: rgba(255, 255, 255, 0.25);
+        }
+
+        .area-label {
+            font-size: 0.65rem;
+            color: #ef9a9a;
+            padding: 4px 10px;
+            margin: 6px 0 2px;
+            background: rgba(229, 115, 115, 0.08);
+            border-radius: 4px;
+            display: inline-block;
+        }
+
+        .aisle-spacer {
+            width: 20px;
+            font-size: 0.6rem;
+            color: rgba(255, 255, 255, 0.2);
+            text-align: center;
+        }
+
+        .selected-info {
+            font-size: 0.8rem;
+            color: var(--bs-gold-light);
+            margin-bottom: 12px;
+        }
+
+        .selected-info strong {
+            color: var(--bs-gold);
+        }
+
+        .col-hint {
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.35);
+            margin-top: 10px;
+        }
+
+        /* No map message */
+        .no-map-msg {
+            background: rgba(212, 165, 116, 0.1);
+            border: 1px solid var(--bs-border);
+            border-radius: 10px;
+            padding: 16px;
+            text-align: center;
+            color: var(--bs-gold-light);
+            font-size: 0.85rem;
+        }
+
+        /* Disabled area */
+        .dim-area {
+            opacity: 0.35;
+            pointer-events: none;
+            transition: all 0.3s ease;
+        }
+
+        .dim-area.enabled {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* Primary action */
+        .btn-symphony {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 14px;
+            background: linear-gradient(135deg, var(--bs-gold-dark), var(--bs-gold));
+            color: var(--bs-navy-dark);
+            font-family: 'Noto Serif JP', serif;
+            font-size: 1rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 20px rgba(212, 165, 116, 0.25);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-symphony::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: 0.6s;
+        }
+
+        .btn-symphony:hover::before {
+            left: 100%;
+        }
+
+        .btn-symphony:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 30px rgba(212, 165, 116, 0.35);
+        }
+
+        .btn-symphony:active {
+            transform: scale(0.98);
+        }
+
+        /* Loading overlay */
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(13, 20, 66, 0.85);
+            backdrop-filter: blur(8px);
+            z-index: 100;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+        }
+
+        .loading-overlay.show {
+            display: flex;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(212, 165, 116, 0.2);
+            border-top-color: var(--bs-gold);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loading-text {
+            color: var(--bs-gold-light);
+            font-size: 0.9rem;
+            letter-spacing: 0.05em;
+        }
+
+        /* Direction arrows */
+        .direction-arrow-bs {
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.4);
+            padding: 6px 0;
+            letter-spacing: 0.05em;
+        }
+
+        /* Divider */
+        .seat-divider {
+            width: 85%;
+            border-bottom: 1px dashed rgba(255, 255, 255, 0.15);
+            margin: 8px 0;
+        }
+
+        /* Back link */
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 0.8rem;
+            text-decoration: none;
+            padding: 12px 16px;
+            transition: color 0.3s;
+        }
+
+        .back-link:hover {
+            color: var(--bs-gold-light);
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(15px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .glass-card {
+            animation: fadeInUp 0.5s ease forwards;
+        }
+
+        .glass-card:nth-child(2) {
+            animation-delay: 0.1s;
+        }
+
+        .glass-card:nth-child(3) {
+            animation-delay: 0.2s;
+        }
+
+        .glass-card:nth-child(4) {
+            animation-delay: 0.3s;
+        }
+
+        .glass-card:nth-child(5) {
+            animation-delay: 0.4s;
+        }
+    </style>
+</head>
+
+<body>
+
+    <a href="/" class="back-link">← 汎用予約ツールへ</a>
+
+    <div class="hero-header">
+        <div class="hero-title">青の交響曲</div>
+        <div class="hero-subtitle">BLUE SYMPHONY</div>
+        <div class="hero-route">大阪阿部野橋 ─── 吉野</div>
+    </div>
+
+    <div class="main-container">
+
+        <!-- ① 便選択 -->
+        <div class="glass-card">
+            <div class="section-label">便を選択</div>
+
+            <div class="mb-3">
+                <label class="form-label-sm">乗車日</label>
+                <select id="date" class="form-select-dark w-100">
+                    {% for d in dates %}
+                    <option value="{{ d.value }}">{{ d.label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="schedule-grid" id="schedule-grid">
+                <div class="schedule-card active" data-index="0" onclick="selectSchedule(this, 0)">
+                    <div class="schedule-num">第 1 便</div>
+                    <div class="schedule-dir">阿部野橋 → 吉野</div>
+                    <div class="schedule-time">10:10 発</div>
+                    <div class="schedule-time-small">→ 11:28 着</div>
+                </div>
+                <div class="schedule-card" data-index="1" onclick="selectSchedule(this, 1)">
+                    <div class="schedule-num">第 2 便</div>
+                    <div class="schedule-dir">吉野 → 阿部野橋</div>
+                    <div class="schedule-time">12:34 発</div>
+                    <div class="schedule-time-small">→ 13:51 着</div>
+                </div>
+                <div class="schedule-card" data-index="2" onclick="selectSchedule(this, 2)">
+                    <div class="schedule-num">第 3 便</div>
+                    <div class="schedule-dir">阿部野橋 → 吉野</div>
+                    <div class="schedule-time">14:10 発</div>
+                    <div class="schedule-time-small">→ 15:28 着</div>
+                </div>
+                <div class="schedule-card" data-index="3" onclick="selectSchedule(this, 3)">
+                    <div class="schedule-num">第 4 便</div>
+                    <div class="schedule-dir">吉野 → 阿部野橋</div>
+                    <div class="schedule-time">16:34 発</div>
+                    <div class="schedule-time-small">→ 17:51 着</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ② 区間・人数 -->
+        <div class="glass-card">
+            <div class="section-label">区間・人数</div>
+
+            <div class="d-flex align-items-end gap-2 mb-3">
+                <div class="flex-fill">
+                    <label class="form-label-sm">発駅</label>
+                    <select id="dep" class="form-select-dark w-100">
+                        {% for s in bs_stations %}
+                        <option value="{{ s }}" {% if s=='大阪阿部野橋' %}selected{% endif %}>{{ s }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="swap-btn" onclick="swapStations()" title="発着入替">⇅</div>
+                <div class="flex-fill">
+                    <label class="form-label-sm">着駅</label>
+                    <select id="arr" class="form-select-dark w-100">
+                        {% for s in bs_stations %}
+                        <option value="{{ s }}" {% if s=='吉野' %}selected{% endif %}>{{ s }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="d-flex gap-3">
+                <div class="flex-fill">
+                    <label class="form-label-sm">大人</label>
+                    <select id="adults" class="form-select-dark w-100" onchange="resetSeatSelection()">
+                        {% for i in range(9) %}
+                        <option value="{{ i }}" {% if i==1 %}selected{% endif %}>{{ i }} 名</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="flex-fill">
+                    <label class="form-label-sm">小児</label>
+                    <select id="children" class="form-select-dark w-100" onchange="resetSeatSelection()">
+                        {% for i in range(9) %}
+                        <option value="{{ i }}">{{ i }} 名</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- ③ グレード -->
+        <div class="glass-card">
+            <div class="section-label">座席グレード</div>
+            <div class="grade-pills">
+                <div class="grade-pill active" data-grade="デラックス" onclick="selectGrade(this)">
+                    <span class="grade-icon">💺</span>
+                    デラックス
+                </div>
+                <div class="grade-pill" data-grade="サロン" onclick="selectGrade(this)">
+                    <span class="grade-icon">🛋️</span>
+                    サロン
+                </div>
+                <div class="grade-pill" data-grade="ツイン" onclick="selectGrade(this)">
+                    <span class="grade-icon">👥</span>
+                    ツイン
+                </div>
+            </div>
+        </div>
+
+        <!-- ④ 座席指定 -->
+        <div class="glass-card">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <div class="section-label mb-0">座席指定</div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="enable_seat_assign" onchange="toggleSeatArea()">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+
+            <div id="seat_detail_area" class="dim-area">
+                <!-- 車両編成図 -->
+                <div class="train-diagram" id="train-diagram">
+                    <div class="train-car active-car" data-car="1" onclick="selectCar(1)">
+                        <div class="train-car-num">1号車</div>
+                        座席車
+                    </div>
+                    <div class="train-connector"></div>
+                    <div class="train-car lounge" data-car="2">
+                        <div class="train-car-num">2号車</div>
+                        ラウンジ
+                    </div>
+                    <div class="train-connector"></div>
+                    <div class="train-car" data-car="3" onclick="selectCar(3)">
+                        <div class="train-car-num">3号車</div>
+                        座席車
+                    </div>
+                </div>
+
+                <!-- 座席マップ -->
+                <div class="seat-map-area" id="map_container">
+                    <div class="selected-info">
+                        選択中: <strong id="selected_seat_text">なし</strong>
+                        <input type="hidden" id="final_seat_no" value="">
+                    </div>
+
+                    <div id="direction_up" class="direction-arrow-bs" style="display:none;">
+                        ↑ 進行方向（下り）
+                    </div>
+
+                    <div class="seat-grid" id="seat_grid"></div>
+
+                    <div id="direction_down" class="direction-arrow-bs" style="display:none;">
+                        ↓ 進行方向（上り）
+                    </div>
+
+                    <div class="col-hint" id="col_hint">画面左: C/B席 ｜ 画面右: A席</div>
+                </div>
+
+                <!-- グレードが個室等の場合 -->
+                <div class="no-map-msg" id="msg_no_map" style="display:none;">
+                    このグレードではシートマップ不要です。<br>自動的に会計へ進みます。
+                </div>
+            </div>
+        </div>
+
+        <!-- 実行ボタン -->
+        <button class="btn-symphony" onclick="runAutomation()" id="submit-btn">
+            予約を開始する
+        </button>
+    </div>
+
+    <!-- Loading overlay -->
+    <div class="loading-overlay" id="loading-overlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">ブラウザを起動中...</div>
+    </div>
+
+    <script>
+        // === 定数・データ ===
+        const SCHEDULES = [
+            { dep: "大阪阿部野橋", arr: "吉野", hour: "10", minute: "00" },
+            { dep: "吉野", arr: "大阪阿部野橋", hour: "12", minute: "30" },
+            { dep: "大阪阿部野橋", arr: "吉野", hour: "14", minute: "00" },
+            { dep: "吉野", arr: "大阪阿部野橋", hour: "16", minute: "30" }
+        ];
+
+        let currentSchedule = 0;
+        let currentGrade = "デラックス";
+        let currentCar = 1;
+        let selectedSeats = [];
+
+        // === 便選択 ===
+        function selectSchedule(el, idx) {
+            document.querySelectorAll('.schedule-card').forEach(c => c.classList.remove('active'));
+            el.classList.add('active');
+            currentSchedule = idx;
+            const s = SCHEDULES[idx];
+            document.getElementById('dep').value = s.dep;
+            document.getElementById('arr').value = s.arr;
+            updateDirection();
+        }
+
+        // === 区間 ===
+        function swapStations() {
+            const dep = document.getElementById('dep');
+            const arr = document.getElementById('arr');
+            const temp = dep.value;
+            dep.value = arr.value;
+            arr.value = temp;
+            updateDirection();
+        }
+
+        function updateDirection() {
+            const dep = document.getElementById('dep').value;
+            const upArrow = document.getElementById('direction_up');
+            const downArrow = document.getElementById('direction_down');
+            const isDown = (dep === "大阪阿部野橋" || dep === "尺土" || dep === "高田市" || dep === "橿原神宮前");
+            upArrow.style.display = isDown ? "block" : "none";
+            downArrow.style.display = isDown ? "none" : "block";
+        }
+
+        // === グレード ===
+        function selectGrade(el) {
+            document.querySelectorAll('.grade-pill').forEach(p => p.classList.remove('active'));
+            el.classList.add('active');
+            currentGrade = el.dataset.grade;
+            resetSeatSelection();
+            updateSeatMap();
+        }
+
+        // === 座席指定 ===
+        function toggleSeatArea() {
+            const enabled = document.getElementById('enable_seat_assign').checked;
+            const area = document.getElementById('seat_detail_area');
+            area.classList.toggle('enabled', enabled);
+        }
+
+        // === 号車選択 ===
+        function selectCar(carNo) {
+            currentCar = carNo;
+            document.querySelectorAll('.train-car:not(.lounge)').forEach(c => c.classList.remove('active-car'));
+            document.querySelector(`.train-car[data-car="${carNo}"]`).classList.add('active-car');
+            resetSeatSelection();
+            drawSeatMap();
+        }
+
+        // === 実際の座席配置データ（近鉄サイト準拠） ===
+        // 各座席の id は近鉄サイトの seatCheck() に渡される3桁IDと一致
+        const BS_CAR_LAYOUT = {
+            // デラックス座席 (上→下 = 前方→後方)
+            deluxe: [
+                // ♿エリア
+                {
+                    type: 'wc-row', seats: [
+                        { name: '31C', id: '313', pos: 'C', wc: true },
+                        { pos: 'B', empty: true, wcSpace: true },
+                        { name: '7A', id: '071', pos: 'A' }
+                    ]
+                },
+                {
+                    type: 'wc-near', seats: [
+                        { name: '35C', id: '353', pos: 'C', wcNear: true },
+                        { name: '35B', id: '352', pos: 'B', wcNear: true },
+                        // A側なし
+                    ]
+                },
+                // 通常エリア
+                {
+                    type: 'regular', row: 6, seats: [
+                        { name: '6C', id: '063', pos: 'C' },
+                        { name: '6B', id: '062', pos: 'B' },
+                        { name: '6A', id: '061', pos: 'A' }
+                    ]
+                },
+                {
+                    type: 'regular', row: 4, seats: [
+                        { name: '4C', id: '043', pos: 'C' },
+                        { name: '4B', id: '042', pos: 'B' },
+                        { name: '4A', id: '041', pos: 'A' }
+                    ]
+                },
+                {
+                    type: 'regular', row: 3, seats: [
+                        { name: '3C', id: '033', pos: 'C' },
+                        { name: '3B', id: '032', pos: 'B' },
+                        { name: '3A', id: '031', pos: 'A' }
+                    ]
+                },
+                {
+                    type: 'single', seats: [
+                        { name: '1A', id: '011', pos: 'A' }
+                    ]
+                }
+            ],
+            // サロン座席
+            salon: [
+                { name: 'サロン 5', id: '051', desc: '3～4人用' },
+                { name: 'サロン 2', id: '021', desc: '3～4人用' }
+            ],
+            // ツイン座席
+            twin: [
+                { name: 'ツイン 8', id: '085', desc: '2人用', wc: true },
+                { name: 'ツイン 5', id: '055', desc: '2人用' },
+                { name: 'ツイン 2', id: '025', desc: '2人用' }
+            ]
+        };
+
+        function updateSeatMap() {
+            const mapContainer = document.getElementById('map_container');
+            const noMap = document.getElementById('msg_no_map');
+            const diagram = document.getElementById('train-diagram');
+
+            mapContainer.style.display = "block";
+            noMap.style.display = "none";
+            diagram.style.display = "flex";
+
+            // 全グレードが1号車・3号車の両方にある
+            document.querySelectorAll('.train-car:not(.lounge)').forEach(c => {
+                c.style.pointerEvents = "auto";
+                c.style.opacity = "1";
+            });
+
+            drawSeatMap();
+        }
+
+        function drawSeatMap() {
+            const grid = document.getElementById('seat_grid');
+            grid.innerHTML = "";
+            const hint = document.getElementById('col_hint');
+
+            if (currentGrade === "サロン") {
+                hint.innerText = "サロン席を選択してください";
+                BS_CAR_LAYOUT.salon.forEach(s => {
+                    const btn = document.createElement('div');
+                    btn.className = 'seat-btn-salon';
+                    btn.innerText = `${s.name}（${s.desc}）`;
+                    btn.onclick = function () { handleSeatClick(this, s.id); };
+                    grid.appendChild(btn);
+                });
+            } else if (currentGrade === "ツイン") {
+                hint.innerText = "ツイン席を選択してください";
+                BS_CAR_LAYOUT.twin.forEach(s => {
+                    const btn = document.createElement('div');
+                    btn.className = 'seat-btn-salon';
+                    btn.innerText = (s.wc ? '♿ ' : '') + `${s.name}（${s.desc}）`;
+                    btn.onclick = function () { handleSeatClick(this, s.id); };
+                    grid.appendChild(btn);
+                });
+            } else {
+                // デラックス座席
+                hint.innerText = "画面左: C/B席 ｜ 画面右: A席";
+                let isFirstRegular = true;
+
+                BS_CAR_LAYOUT.deluxe.forEach(rowDef => {
+                    if (rowDef.type === 'wc-row') {
+                        // ♿ エリアラベル
+                        const label = document.createElement('div');
+                        label.className = 'area-label';
+                        label.innerText = '♿ 車いす対応エリア';
+                        grid.appendChild(label);
+
+                        const row = createRowDiv();
+                        rowDef.seats.forEach(s => {
+                            if (s.empty && s.wcSpace) {
+                                row.appendChild(createWcSpace());
+                            } else if (s.pos === 'A') {
+                                row.appendChild(createAisle());
+                                row.appendChild(makeSeatBtn(s.name, s.id, s.wc));
+                            } else {
+                                row.appendChild(makeSeatBtn(s.name, s.id, s.wc));
+                            }
+                        });
+                        grid.appendChild(row);
+
+                    } else if (rowDef.type === 'wc-near') {
+                        const row = createRowDiv();
+                        rowDef.seats.forEach(s => {
+                            row.appendChild(makeSeatBtn(s.name, s.id, s.wcNear));
+                        });
+                        row.appendChild(createAisle());
+                        row.appendChild(createEmptySeat());
+                        grid.appendChild(row);
+
+                    } else if (rowDef.type === 'regular') {
+                        if (isFirstRegular) {
+                            addDivider(grid);
+                            isFirstRegular = false;
+                        }
+                        const row = createRowDiv();
+                        const cSeat = rowDef.seats.find(s => s.pos === 'C');
+                        const bSeat = rowDef.seats.find(s => s.pos === 'B');
+                        const aSeat = rowDef.seats.find(s => s.pos === 'A');
+                        row.appendChild(makeSeatBtn(cSeat.name, cSeat.id, false));
+                        row.appendChild(makeSeatBtn(bSeat.name, bSeat.id, false));
+                        row.appendChild(createAisle(rowDef.row));
+                        row.appendChild(makeSeatBtn(aSeat.name, aSeat.id, false));
+                        grid.appendChild(row);
+
+                    } else if (rowDef.type === 'single') {
+                        const row = createRowDiv();
+                        row.appendChild(createEmptySeat());
+                        row.appendChild(createEmptySeat());
+                        row.appendChild(createAisle(1));
+                        row.appendChild(makeSeatBtn(rowDef.seats[0].name, rowDef.seats[0].id, false));
+                        grid.appendChild(row);
+                    }
+                });
+            }
+
+            updateDirection();
+        }
+
+        // --- ヘルパー ---
+        function makeSeatBtn(displayName, seatId, isSpecial) {
+            const btn = document.createElement('div');
+            if (isSpecial) {
+                btn.className = 'seat-btn-special';
+                btn.innerHTML = `<span style="font-size:0.55rem">♿</span>${displayName}`;
+            } else {
+                btn.className = 'seat-btn';
+                btn.innerText = displayName;
+            }
+            btn.onclick = function () { handleSeatClick(this, seatId); };
+            return btn;
+        }
+
+        function createRowDiv() {
+            const d = document.createElement('div');
+            d.className = 'seat-row';
+            return d;
+        }
+
+        function createAisle(txt) {
+            const div = document.createElement('div');
+            div.className = 'aisle-spacer';
+            div.innerText = txt || '';
+            return div;
+        }
+
+        function createEmptySeat() {
+            const div = document.createElement('div');
+            div.className = 'seat-empty';
+            return div;
+        }
+
+        function createWcSpace() {
+            const div = document.createElement('div');
+            div.className = 'seat-wc-space';
+            div.innerText = '♿';
+            return div;
+        }
+
+        function addDivider(container) {
+            const hr = document.createElement('div');
+            hr.className = 'seat-divider';
+            container.appendChild(hr);
+        }
+
+        // === 座席選択ロジック ===
+        function handleSeatClick(el, val) {
+            const adults = parseInt(document.getElementById('adults').value);
+            const children = parseInt(document.getElementById('children').value);
+            const total = adults + children;
+
+            if (total === 0) {
+                alert("人数を選択してください");
+                return;
+            }
+
+            if (selectedSeats.includes(val)) {
+                selectedSeats = selectedSeats.filter(s => s !== val);
+                el.classList.remove('selected');
+            } else {
+                if (selectedSeats.length < total) {
+                    selectedSeats.push(val);
+                    el.classList.add('selected');
+                } else if (total === 1) {
+                    document.querySelectorAll('.selected').forEach(e => e.classList.remove('selected'));
+                    selectedSeats = [val];
+                    el.classList.add('selected');
+                } else {
+                    alert(`${total}名分のみ選択可能です。\n解除してから選び直してください。`);
+                    return;
+                }
+            }
+            updateSelectedDisplay();
+        }
+
+        function resetSeatSelection() {
+            selectedSeats = [];
+            updateSelectedDisplay();
+            document.querySelectorAll('.selected').forEach(el => el.classList.remove('selected'));
+        }
+
+        function updateSelectedDisplay() {
+            const txt = selectedSeats.length > 0 ? selectedSeats.join(', ') : "なし";
+            document.getElementById('selected_seat_text').innerText = txt;
+            document.getElementById('final_seat_no').value = selectedSeats.join(',');
+        }
+
+        // === 自動化実行 ===
+        function runAutomation() {
+            const schedule = SCHEDULES[currentSchedule];
+            const data = {
+                date: document.getElementById('date').value,
+                hour: schedule.hour,
+                minute: schedule.minute,
+                dep: document.getElementById('dep').value,
+                arr: document.getElementById('arr').value,
+                adults: document.getElementById('adults').value,
+                children: document.getElementById('children').value,
+                train: "青の交響曲",
+                grade: currentGrade,
+                enable_seat_assign: document.getElementById('enable_seat_assign').checked,
+                car_no: currentCar.toString(),
+                seat_no: document.getElementById('final_seat_no').value
+            };
+
+            document.getElementById('loading-overlay').classList.add('show');
+
+            fetch('/run', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+                .then(res => res.json())
+                .then(result => {
+                    document.getElementById('loading-overlay').classList.remove('show');
+                    alert(result.message);
+                })
+                .catch(err => {
+                    document.getElementById('loading-overlay').classList.remove('show');
+                    alert("エラーが発生しました");
+                });
+        }
+
+        // === 初期化 ===
+        drawSeatMap();
+        updateDirection();
+    </script>
+
+</body>
+
+</html>

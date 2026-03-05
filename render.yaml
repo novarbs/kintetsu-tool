@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: kintetsu-monitor
+    runtime: docker
+    plan: free
+    envVars:
+      - key: DISCORD_WEBHOOK_URL
+        sync: false
+      - key: FLASK_ENV
+        value: production
